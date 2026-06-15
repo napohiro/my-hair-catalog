@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#FFFFFF">
+  <title>ヘアカタログ</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="loading-screen" class="loading-screen">
+      <div class="loading-logo">
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="28" cy="28" r="26" stroke="#C8A96E" stroke-width="2"/>
+          <path d="M20 38 C18 30 20 20 28 16 C36 20 38 30 36 38" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <path d="M24 38 C23 32 24 24 28 20 C32 24 33 32 32 38" stroke="#C8A96E" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        </svg>
+        <p class="loading-title">ヘアカタログ</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div id="modal-box" class="modal-box"></div>
+  </div>
+
+  <div id="angle-picker-overlay" class="modal-overlay hidden">
+    <div class="angle-picker-box">
+      <h3 class="angle-picker-title">角度を選択</h3>
+      <div id="angle-picker-grid" class="angle-picker-grid"></div>
+      <button class="btn-text danger" id="angle-picker-cancel">キャンセル</button>
+    </div>
+  </div>
+
+  <script src="js/db.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
