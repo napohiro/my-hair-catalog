@@ -31,6 +31,32 @@ const GENRES = [
 const ANGLE_MAP = Object.fromEntries(ANGLES.map(a => [a.key, a]));
 const GENRE_MAP = Object.fromEntries(GENRES.map(g => [g.key, g]));
 
+const AI_PROMPT = `この画像から、美容院や床屋でカットしてもらうときに、美容師さんへこのヘアスタイルに近づけるように説明するための文章を作成してください。
+
+以下の内容を、美容師さん・理容師さんに伝わりやすいように、専門的かつ分かりやすく整理してください。
+
+・髪型全体の印象
+・ベースの髪型
+・前髪の長さと特徴
+・サイドの長さと特徴
+・後ろ、襟足の長さと特徴
+・トップの長さと動き
+・ツーブロックの有無
+・刈り上げの有無と長さの目安
+・フェードの有無
+・毛量調整のポイント
+・レイヤーや段の入れ方
+・束感、重さ、軽さなどの質感
+・セット方法
+・使う整髪料の目安
+・美容師さんに伝えるときの注意点
+
+できれば、サイドは何mm〜何mmくらい、トップは何cmくらい、前髪は眉上・眉くらい・眉にかかる程度など、長さの目安も入れてください。
+
+ただし、画像だけでは正確に判断できない部分もあると思うので、断定しすぎず、「目安」「〜程度」「美容師さんと相談」などの表現も使ってください。
+
+最後に、美容院でそのまま見せられるように、短くまとまった「美容師さんへの伝え方」も作成してください。`;
+
 // ============================================================
 // STATE
 // ============================================================
@@ -102,6 +128,35 @@ function formatDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);
   return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function copyAiPrompt(btnId) {
+  const done = () => {
+    showToast('プロンプトをコピーしました', 'success');
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = 'コピーしました ✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+    }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(AI_PROMPT).then(done).catch(() => fallbackCopy(done));
+  } else {
+    fallbackCopy(done);
+  }
+}
+
+function fallbackCopy(cb) {
+  const ta = document.createElement('textarea');
+  ta.value = AI_PROMPT;
+  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  ta.remove();
+  cb();
 }
 
 // ============================================================
@@ -665,6 +720,33 @@ async function renderDetail() {
           登録日: ${formatDate(s.createdAt)}
         </div>
 
+        <div class="detail-section ai-prompt-section">
+          <div class="detail-section-title">AIでヘアスタイル説明を作成</div>
+          <div class="ai-prompt-body">
+            <p class="ai-prompt-desc">この画像をChatGPT・Claude・Geminiなどに添付し、下の文章をコピーして送ると、美容師さん向けのカット説明文を作成しやすくなります。</p>
+            <div class="ai-links">
+              <a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">ChatGPTで相談</a>
+              <a href="https://claude.ai/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">Claudeで相談</a>
+              <a href="https://gemini.google.com/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">Geminiで相談</a>
+            </div>
+            <div class="ai-prompt-box">
+              <div class="ai-prompt-text">${escHtml(AI_PROMPT)}</div>
+            </div>
+            <button class="btn-copy-prompt" id="btn-copy-prompt" onclick="copyAiPrompt('btn-copy-prompt')">プロンプトをコピー</button>
+            <div class="ai-how-to">
+              <div class="ai-how-to-title">使い方</div>
+              <ol class="ai-how-to-list">
+                <li>上の「プロンプトをコピー」を押す</li>
+                <li>ChatGPT・Claude・Geminiのどれかを開く</li>
+                <li>登録したヘアスタイル画像を添付する</li>
+                <li>コピーした文章を貼り付けて送信する</li>
+                <li>生成された説明文を美容師さんに見せる</li>
+              </ol>
+            </div>
+            <p class="ai-disclaimer-note">AIの回答は参考用です。実際の髪質・毛量・骨格・クセ・現在の髪の長さによって仕上がりは変わるため、最終的には美容師さんと相談してください。</p>
+          </div>
+        </div>
+
         <div class="detail-actions">
           <button class="btn-gold" onclick="navigate('salon','${s.id}')">
             ${ICONS.scissors} 美容院で見せるモード
@@ -799,8 +881,8 @@ async function renderSalon(app) {
           ` : `<div style="color:#444;font-size:14px">画像がありません</div>`}
         </div>
 
-        ${hasNotes ? `
-          <div class="salon-notes-panel">
+        <div class="salon-notes-panel">
+          ${hasNotes ? `
             <div class="salon-notes-title">カット指示</div>
             ${lengthPairs.length > 0 ? `
               <div class="salon-notes-grid">
@@ -814,7 +896,9 @@ async function renderSalon(app) {
             ${n.avoidPoints ? `<div class="salon-notes-text"><div class="salon-notes-label">避けたいポイント</div>${escHtml(n.avoidPoints)}</div>` : ''}
             ${n.cutInstructions ? `<div class="salon-notes-text"><div class="salon-notes-label">伝えたいこと</div>${escHtml(n.cutInstructions)}</div>` : ''}
             <p class="salon-disclaimer">AI生成や自動説明は参考用です。実際のカットでは美容師さんと相談しながら調整してください。</p>
-          </div>` : ''}
+          ` : ''}
+          <button class="btn-salon-ai-copy" id="btn-salon-copy-prompt" onclick="copyAiPrompt('btn-salon-copy-prompt')">AI相談用プロンプトをコピー</button>
+        </div>
       </div>
     </main>`;
 
