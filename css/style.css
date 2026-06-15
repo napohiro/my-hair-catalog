@@ -1185,6 +1185,177 @@ a { color: inherit; text-decoration: none; }
   text-align: center;
 }
 
+/* ===== Beauty Show Button (in detail page) ===== */
+.btn-beauty-show {
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1.5px solid var(--gold);
+  color: var(--gold);
+  font-size: 15px;
+  font-weight: 600;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background .15s;
+}
+.btn-beauty-show:active { background: var(--gold-light); }
+
+/* ===== Beauty View（美容師さんに見せる）===== */
+.beauty-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--bg);
+}
+
+.beauty-img-area {
+  width: 100%;
+  aspect-ratio: 3/4;
+  max-height: 58vh;
+  background: #111;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.beauty-main-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.beauty-img-empty { color: #444; }
+
+.beauty-style-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  padding: 14px var(--sp) 0;
+}
+
+.beauty-body {
+  padding: var(--sp);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 40px;
+}
+
+.beauty-instruction-card {
+  background: var(--gold-light);
+  border-radius: var(--radius-md);
+  padding: 14px var(--sp);
+  font-size: 13px;
+  color: #6B4F10;
+  line-height: 1.7;
+}
+
+.beauty-prompt-card,
+.beauty-input-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px var(--sp);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.beauty-card-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.beauty-card-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+  margin-top: -4px;
+}
+
+.beauty-prompt-display {
+  background: #F7F7F7;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.beauty-textarea {
+  width: 100%;
+  min-height: 160px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-family: var(--font);
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.65;
+  resize: vertical;
+  background: #FAFAFA;
+  outline: none;
+  transition: border-color .15s;
+}
+.beauty-textarea.small { min-height: 96px; }
+.beauty-textarea:focus { border-color: var(--gold); background: #fff; }
+.beauty-textarea::placeholder { color: var(--text-tertiary); }
+
+.beauty-form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.beauty-saved-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px var(--sp);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.beauty-saved-card.memo {
+  border-left: 3px solid var(--gold);
+}
+.beauty-saved-card-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.beauty-saved-text {
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+.beauty-updated-date {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: right;
+}
+.beauty-view-actions {
+  display: flex;
+  gap: 10px;
+}
+.beauty-view-actions > * { flex: 1; }
+
 /* ===== Salon AI Copy Button ===== */
 .btn-salon-ai-copy {
   width: 100%;
