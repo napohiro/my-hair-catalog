@@ -93,6 +93,44 @@ const AI_PROMPT = `この画像のヘアスタイルを分析してください�
 
 const BEAUTY_PROMPT = AI_PROMPT;
 
+const FACE_SHAPES = [
+  { key: 'unknown', label: 'わからない' },
+  { key: 'round',   label: '丸顔' },
+  { key: 'long',    label: '面長' },
+  { key: 'base',    label: 'ベース型' },
+  { key: 'inv',     label: '逆三角形' },
+  { key: 'oval',    label: '卵型' },
+];
+const HAIR_TYPES = [
+  { key: 'unknown',  label: 'わからない' },
+  { key: 'straight', label: '直毛' },
+  { key: 'wavy',     label: 'くせ毛' },
+  { key: 'hard',     label: '硬い' },
+  { key: 'soft',     label: '柔らかい' },
+  { key: 'thick',    label: '毛量多め' },
+  { key: 'thin',     label: '毛量少なめ' },
+];
+const FACE_CONCERNS = [
+  { key: 'styling',  label: 'セットが苦手' },
+  { key: 'clean',    label: '清潔感を出したい' },
+  { key: 'young',    label: '若く見せたい' },
+  { key: 'biz',      label: 'ビジネスでも自然に' },
+  { key: 'thinning', label: '薄毛が気になる' },
+  { key: 'gray',     label: '白髪が気になる' },
+];
+const DESIRED_STYLES = [
+  { key: 'short',    label: '短め' },
+  { key: 'medium',   label: '普通' },
+  { key: 'long',     label: '長め' },
+  { key: 'fresh',    label: '爽やか' },
+  { key: 'mature',   label: '大人っぽい' },
+  { key: 'youthful', label: '若々しい' },
+  { key: 'bizstyle', label: 'ビジネス向け' },
+];
+const FACE_PROMPT_BASE = `この顔写真をもとに、私に似合いそうな髪型を提案してください。顔型、髪質、毛量、雰囲気、清潔感、年齢に合う印象、セットのしやすさを考慮してください。回答は美容師さんにそのまま見せられるように、短く箇条書きでまとめてください。おすすめ髪型を3つ提案し、それぞれについて、前髪・サイド・トップ・襟足・セット方法・美容師さんへの伝え方を簡潔に書いてください。断定しすぎず「目安」「〜程度」「画像から推測」という表現を使ってください。`;
+
+const _faceForm = { photo: null, faceShape: 'unknown', hairType: [], concerns: [], desiredStyle: [] };
+
 // ============================================================
 // STATE
 // ============================================================
@@ -105,6 +143,8 @@ const state = {
   beautyEditMode: false,
   beautyImgIdx: 0,
   beautySalonMode: false,
+  faceEditMode: false,
+  faceSalonMode: false,
   filterGenre: null,
   filterFav: false,
   searchQuery: '',
@@ -200,6 +240,20 @@ function fallbackCopy(text, cb) {
   cb();
 }
 
+function buildFacePrompt() {
+  const shapeLabel = FACE_SHAPES.find(f => f.key === _faceForm.faceShape)?.label || 'わからない';
+  const hairLabels = _faceForm.hairType.map(k => HAIR_TYPES.find(h => h.key === k)?.label).filter(Boolean);
+  const concernLabels = _faceForm.concerns.map(k => FACE_CONCERNS.find(h => h.key === k)?.label).filter(Boolean);
+  const styleLabels = _faceForm.desiredStyle.map(k => DESIRED_STYLES.find(h => h.key === k)?.label).filter(Boolean);
+  const lines = [FACE_PROMPT_BASE];
+  lines.push(`\n【私の情報】`);
+  lines.push(`・顔型：${shapeLabel}`);
+  if (hairLabels.length) lines.push(`・髪質・毛量：${hairLabels.join('、')}`);
+  if (concernLabels.length) lines.push(`・気になること：${concernLabels.join('、')}`);
+  if (styleLabels.length) lines.push(`・希望のイメージ：${styleLabels.join('、')}`);
+  return lines.join('\n');
+}
+
 function getBeautyData(id) {
   try {
     const raw = localStorage.getItem('beauty_' + id);
@@ -212,6 +266,20 @@ function getBeautyData(id) {
 function saveBeautyData(id, data) {
   try {
     localStorage.setItem('beauty_' + id, JSON.stringify({ ...data, updatedAt: new Date().toISOString() }));
+  } catch(e) {}
+}
+
+function getFaceData() {
+  try {
+    const raw = localStorage.getItem('face_consult');
+    return raw ? JSON.parse(raw) : { photo: null, faceShape: 'unknown', hairType: [], concerns: [], desiredStyle: [], aiText: '', userMemo: '', updatedAt: null };
+  } catch(e) {
+    return { photo: null, faceShape: 'unknown', hairType: [], concerns: [], desiredStyle: [], aiText: '', userMemo: '', updatedAt: null };
+  }
+}
+function saveFaceData(data) {
+  try {
+    localStorage.setItem('face_consult', JSON.stringify({ ...data, updatedAt: new Date().toISOString() }));
   } catch(e) {}
 }
 
@@ -249,6 +317,10 @@ function buildBottomNav(active = 'list') {
         ${ICONS.heart}
         <span>お気に入り</span>
       </button>
+      <button class="nav-item ${active==='face'?'active':''}" onclick="navigate('face')">
+        ${ICONS.face}
+        <span>顔型相談</span>
+      </button>
     </nav>`;
 }
 
@@ -274,6 +346,7 @@ const ICONS = {
   image:  `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
   salon:  `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>`,
   note:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`,
+  face:   `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M3 21c0-4 4-7 9-7s9 3 9 7"/></svg>`,
 };
 
 // ============================================================
@@ -284,6 +357,7 @@ function navigate(view, id) {
   if (view === 'detail') state.detailId = id;
   if (view === 'salon')  { state.salonId = id; state.salonAngle = null; state.salonImgIdx = 0; }
   if (view === 'beauty') { state.beautyId = id; state.beautyEditMode = false; state.beautyImgIdx = 0; state.beautySalonMode = false; }
+  if (view === 'face') { state.faceEditMode = false; state.faceSalonMode = false; }
   if (view === 'form')   { state.editId = id || null; state.formImages = []; }
   if (view === 'list')   { state.searchQuery = ''; }
   renderApp();
@@ -295,6 +369,8 @@ function goBack() {
   if (state.view === 'salon')  navigate('detail', state.salonId);
   else if (state.view === 'beauty' && state.beautySalonMode) { state.beautySalonMode = false; renderApp(); return; }
   else if (state.view === 'beauty') navigate('detail', state.beautyId);
+  else if (state.view === 'face' && state.faceSalonMode) { state.faceSalonMode = false; renderApp(); return; }
+  else if (state.view === 'face') navigate('list');
   else if (state.view === 'detail') navigate('list');
   else if (state.view === 'form')   navigate('list');
   else navigate('list');
@@ -321,6 +397,11 @@ async function renderApp() {
 
   if (state.view === 'beauty') {
     await renderBeauty(app);
+    return;
+  }
+
+  if (state.view === 'face') {
+    renderFace(app);
     return;
   }
 
@@ -1204,6 +1285,275 @@ function doClearBeauty() {
   localStorage.removeItem('beauty_' + state.beautyId);
   state.beautyEditMode = false;
   showToast('クリアしました');
+  renderApp();
+}
+
+// ============================================================
+// FACE CONSULTATION
+// ============================================================
+
+function renderFace(app) {
+  const fd = getFaceData();
+  const isEdit = state.faceEditMode;
+  const isSalon = state.faceSalonMode;
+  const hasData = !!(fd.aiText);
+
+  // Sync _faceForm with saved data (only when not editing — edit uses live _faceForm)
+  if (!isEdit) {
+    _faceForm.photo       = fd.photo || null;
+    _faceForm.faceShape   = fd.faceShape || 'unknown';
+    _faceForm.hairType    = fd.hairType || [];
+    _faceForm.concerns    = fd.concerns || [];
+    _faceForm.desiredStyle = fd.desiredStyle || [];
+  }
+
+  const photoHtml = _faceForm.photo
+    ? `<img src="${_faceForm.photo}" class="face-photo-img" alt="顔写真">`
+    : `<div class="face-photo-placeholder">${ICONS.face}<span>顔写真を追加</span></div>`;
+
+  const updatedStr = fd.updatedAt
+    ? `最終更新：${new Date(fd.updatedAt).toLocaleDateString('ja-JP')}`
+    : '';
+
+  // ---- SALON MODE ----
+  if (isSalon) {
+    app.innerHTML = `
+      ${buildHeader({ title: '顔型診断カルテ', back: true, actions: '' })}
+      <main class="app-main face-view">
+        <div class="face-salon-photo-area">
+          ${_faceForm.photo ? `<img src="${_faceForm.photo}" class="face-photo-img" alt="顔写真">` : ''}
+        </div>
+        <div class="face-salon-body">
+          <div class="face-salon-result-label">AI提案メモ</div>
+          <div class="face-salon-result">${escHtml(fd.aiText).replace(/\n/g, '<br>')}</div>
+          ${fd.userMemo ? `<div class="face-salon-memo-label">メモ</div><div class="face-salon-memo">${escHtml(fd.userMemo).replace(/\n/g, '<br>')}</div>` : ''}
+        </div>
+      </main>`;
+    return;
+  }
+
+  // ---- SAVED VIEW ----
+  if (hasData && !isEdit) {
+    const shapeLabel = FACE_SHAPES.find(f => f.key === fd.faceShape)?.label || 'わからない';
+    const hairLabels = (fd.hairType || []).map(k => HAIR_TYPES.find(h => h.key === k)?.label).filter(Boolean);
+    const concernLabels = (fd.concerns || []).map(k => FACE_CONCERNS.find(h => h.key === k)?.label).filter(Boolean);
+    const styleLabels = (fd.desiredStyle || []).map(k => DESIRED_STYLES.find(h => h.key === k)?.label).filter(Boolean);
+
+    app.innerHTML = `
+      ${buildHeader({ title: '似合う髪型相談', back: true, actions: '' })}
+      <main class="app-main face-view">
+        ${_faceForm.photo ? `<div class="face-photo-area"><img src="${_faceForm.photo}" class="face-photo-img" alt="顔写真"></div>` : ''}
+        <div class="face-body">
+          <div class="face-info-chips">
+            <span class="face-info-chip">顔型：${escHtml(shapeLabel)}</span>
+            ${hairLabels.map(l=>`<span class="face-info-chip">${escHtml(l)}</span>`).join('')}
+            ${concernLabels.map(l=>`<span class="face-info-chip">${escHtml(l)}</span>`).join('')}
+            ${styleLabels.map(l=>`<span class="face-info-chip">${escHtml(l)}</span>`).join('')}
+          </div>
+          <div class="beauty-saved-card">
+            <div class="beauty-saved-card-label">AI提案メモ</div>
+            <div class="beauty-saved-text">${escHtml(fd.aiText).replace(/\n/g, '<br>')}</div>
+          </div>
+          ${fd.userMemo ? `<div class="beauty-saved-card memo"><div class="beauty-saved-card-label">メモ</div><div class="beauty-saved-text">${escHtml(fd.userMemo).replace(/\n/g, '<br>')}</div></div>` : ''}
+          ${updatedStr ? `<div class="beauty-updated-date">${updatedStr}</div>` : ''}
+          <button class="btn-gold" style="width:100%;margin-top:16px" onclick="enterFaceSalon()">✦ 美容師さんに見せるモード</button>
+          <div class="beauty-view-actions" style="margin-top:12px">
+            <button class="btn-outline" onclick="enterFaceEdit()">編集する</button>
+            <button class="btn-text danger" onclick="confirmClearFace()">クリア</button>
+          </div>
+        </div>
+      </main>
+      ${buildBottomNav('face')}`;
+    return;
+  }
+
+  // ---- CREATE / EDIT MODE ----
+  const buildChips = (items, selectedArr, multi, clickFn) =>
+    items.map(it => {
+      const active = multi ? selectedArr.includes(it.key) : selectedArr === it.key;
+      return `<button class="face-chip ${active?'active':''}" onclick="${clickFn}('${it.key}')">${escHtml(it.label)}</button>`;
+    }).join('');
+
+  const currentPrompt = buildFacePrompt();
+
+  app.innerHTML = `
+    ${buildHeader({ title: '似合う髪型相談', back: true, actions: '' })}
+    <main class="app-main face-view">
+      <div class="face-photo-area" onclick="document.getElementById('face-photo-input').click()">
+        ${photoHtml}
+        ${_faceForm.photo ? `<div class="face-photo-change">写真を変更</div>` : ''}
+      </div>
+      <input type="file" id="face-photo-input" accept="image/*" style="display:none" onchange="handleFacePhoto(event)">
+      <div class="face-form-body">
+        <div class="face-section">
+          <div class="face-section-label">顔の形</div>
+          <div class="face-chips">${buildChips(FACE_SHAPES, _faceForm.faceShape, false, 'selectFaceShape')}</div>
+        </div>
+        <div class="face-section">
+          <div class="face-section-label">髪質・毛量 <span class="face-section-hint">（複数選択可）</span></div>
+          <div class="face-chips">${buildChips(HAIR_TYPES, _faceForm.hairType, true, 'toggleFaceChip_hair')}</div>
+        </div>
+        <div class="face-section">
+          <div class="face-section-label">気になること <span class="face-section-hint">（複数選択可）</span></div>
+          <div class="face-chips">${buildChips(FACE_CONCERNS, _faceForm.concerns, true, 'toggleFaceChip_concern')}</div>
+        </div>
+        <div class="face-section">
+          <div class="face-section-label">希望のイメージ <span class="face-section-hint">（複数選択可）</span></div>
+          <div class="face-chips">${buildChips(DESIRED_STYLES, _faceForm.desiredStyle, true, 'toggleFaceChip_style')}</div>
+        </div>
+
+        <div class="face-section">
+          <div class="face-section-label">AI提案メモ <span class="face-section-hint">（AIから受け取った提案を貼り付け）</span></div>
+          <textarea id="face-ai-text" class="beauty-textarea large" placeholder="AIに相談した結果をここに貼り付けてください" rows="6">${escHtml(fd.aiText || '')}</textarea>
+        </div>
+        <div class="face-section">
+          <div class="face-section-label">自分用メモ <span class="face-section-hint">（任意）</span></div>
+          <textarea id="face-memo" class="beauty-textarea small" placeholder="気になった髪型など（任意）" rows="3">${escHtml(fd.userMemo || '')}</textarea>
+        </div>
+        <button class="btn-gold" style="width:100%" onclick="saveFaceForm()">保存する</button>
+
+        <details class="ai-accordion" style="margin-top:20px">
+          <summary class="ai-accordion-summary">AIで提案を作る（使い方）</summary>
+          <div class="ai-accordion-body">
+            <p class="ai-accordion-desc">上の選択内容をもとにプロンプトを自動生成します。顔写真をAIに添付し、プロンプトを貼り付けて相談してください。</p>
+            <div class="ai-prompt-box" style="margin-bottom:12px">
+              <div class="ai-prompt-text" id="face-prompt-display">${escHtml(currentPrompt)}</div>
+            </div>
+            <button class="btn-copy-prompt" id="btn-face-copy" onclick="copyFacePrompt()">プロンプトをコピー</button>
+            <div class="ai-links-group" style="margin-top:16px">
+              <div class="ai-links-label">AIを開く</div>
+              <div class="ai-links">
+                <a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">ChatGPT</a>
+                <a href="https://claude.ai/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">Claude</a>
+                <a href="https://gemini.google.com/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">Gemini</a>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+    </main>
+    ${buildBottomNav('face')}`;
+}
+
+async function handleFacePhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const compressed = await compressImage(file, 1200, 0.8);
+    _faceForm.photo = compressed;
+    const area = document.querySelector('.face-photo-area');
+    if (area) {
+      area.innerHTML = `<img src="${compressed}" class="face-photo-img" alt="顔写真"><div class="face-photo-change">写真を変更</div>`;
+      area.onclick = () => document.getElementById('face-photo-input').click();
+    }
+  } catch(err) { showToast('画像の読み込みに失敗しました', 'error'); }
+}
+
+function selectFaceShape(key) {
+  _faceForm.faceShape = key;
+  document.querySelectorAll('.face-section:nth-of-type(1) .face-chip').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent === (FACE_SHAPES.find(f=>f.key===key)?.label || ''));
+  });
+  _updateFacePromptDisplay();
+}
+
+function toggleFaceChip_hair(key) {
+  const arr = _faceForm.hairType;
+  const idx = arr.indexOf(key);
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(key);
+  document.querySelectorAll('.face-section:nth-of-type(2) .face-chip').forEach(btn => {
+    const k = HAIR_TYPES.find(h => h.label === btn.textContent)?.key;
+    if (k) btn.classList.toggle('active', arr.includes(k));
+  });
+  _updateFacePromptDisplay();
+}
+
+function toggleFaceChip_concern(key) {
+  const arr = _faceForm.concerns;
+  const idx = arr.indexOf(key);
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(key);
+  document.querySelectorAll('.face-section:nth-of-type(3) .face-chip').forEach(btn => {
+    const k = FACE_CONCERNS.find(h => h.label === btn.textContent)?.key;
+    if (k) btn.classList.toggle('active', arr.includes(k));
+  });
+  _updateFacePromptDisplay();
+}
+
+function toggleFaceChip_style(key) {
+  const arr = _faceForm.desiredStyle;
+  const idx = arr.indexOf(key);
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(key);
+  document.querySelectorAll('.face-section:nth-of-type(4) .face-chip').forEach(btn => {
+    const k = DESIRED_STYLES.find(h => h.label === btn.textContent)?.key;
+    if (k) btn.classList.toggle('active', arr.includes(k));
+  });
+  _updateFacePromptDisplay();
+}
+
+function _updateFacePromptDisplay() {
+  const el = document.getElementById('face-prompt-display');
+  if (el) el.textContent = buildFacePrompt();
+}
+
+function copyFacePrompt() {
+  copyAiPrompt('btn-face-copy', buildFacePrompt());
+}
+
+function saveFaceForm() {
+  const aiText = (document.getElementById('face-ai-text')?.value || '').trim();
+  const userMemo = (document.getElementById('face-memo')?.value || '').trim();
+  saveFaceData({
+    photo: _faceForm.photo,
+    faceShape: _faceForm.faceShape,
+    hairType: [..._faceForm.hairType],
+    concerns: [..._faceForm.concerns],
+    desiredStyle: [..._faceForm.desiredStyle],
+    aiText,
+    userMemo,
+  });
+  state.faceEditMode = false;
+  showToast('保存しました', 'success');
+  renderApp();
+}
+
+function enterFaceEdit() {
+  const fd = getFaceData();
+  _faceForm.photo        = fd.photo || null;
+  _faceForm.faceShape    = fd.faceShape || 'unknown';
+  _faceForm.hairType     = [...(fd.hairType || [])];
+  _faceForm.concerns     = [...(fd.concerns || [])];
+  _faceForm.desiredStyle = [...(fd.desiredStyle || [])];
+  state.faceEditMode = true;
+  renderApp();
+}
+
+function cancelFaceEdit() {
+  state.faceEditMode = false;
+  renderApp();
+}
+
+function enterFaceSalon() {
+  state.faceSalonMode = true;
+  renderApp();
+}
+
+function confirmClearFace() {
+  showModal({
+    title: '相談データをクリア',
+    message: '保存した顔型相談データをすべて削除します。よろしいですか？',
+    actions: `<button class="btn-danger" onclick="doClearFace()">削除する</button><button class="btn-outline" onclick="closeModal()">キャンセル</button>`,
+  });
+}
+
+function doClearFace() {
+  localStorage.removeItem('face_consult');
+  _faceForm.photo = null;
+  _faceForm.faceShape = 'unknown';
+  _faceForm.hairType = [];
+  _faceForm.concerns = [];
+  _faceForm.desiredStyle = [];
+  closeModal();
+  showToast('クリアしました', 'success');
   renderApp();
 }
 
