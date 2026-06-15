@@ -310,18 +310,23 @@ function buildBottomNav(active = 'list') {
         ${ICONS.home}
         <span>ホーム</span>
       </button>
-      <div class="nav-item-add">
-        <button class="nav-add-btn" onclick="navigate('form')" aria-label="追加">${ICONS.plus}</button>
-      </div>
       <button class="nav-item ${active==='fav'?'active':''}" onclick="toggleFavFilter()">
         ${ICONS.heart}
         <span>お気に入り</span>
       </button>
       <button class="nav-item ${active==='face'?'active':''}" onclick="navigate('face')">
         ${ICONS.face}
-        <span>顔型相談</span>
+        <span>似合う相談</span>
+      </button>
+      <button class="nav-item ${active==='settings'?'active':''}" onclick="navigate('settings')">
+        ${ICONS.settings}
+        <span>設定</span>
       </button>
     </nav>`;
+}
+
+function buildFab() {
+  return `<button class="fab" onclick="navigate('form')" aria-label="新しいヘアスタイルを追加">${ICONS.plus}</button>`;
 }
 
 // ============================================================
@@ -346,7 +351,8 @@ const ICONS = {
   image:  `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
   salon:  `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>`,
   note:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`,
-  face:   `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M3 21c0-4 4-7 9-7s9 3 9 7"/></svg>`,
+  face:     `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M3 21c0-4 4-7 9-7s9 3 9 7"/></svg>`,
+  settings: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>`,
 };
 
 // ============================================================
@@ -357,9 +363,10 @@ function navigate(view, id) {
   if (view === 'detail') state.detailId = id;
   if (view === 'salon')  { state.salonId = id; state.salonAngle = null; state.salonImgIdx = 0; }
   if (view === 'beauty') { state.beautyId = id; state.beautyEditMode = false; state.beautyImgIdx = 0; state.beautySalonMode = false; }
-  if (view === 'face') { state.faceEditMode = false; state.faceSalonMode = false; }
-  if (view === 'form')   { state.editId = id || null; state.formImages = []; }
-  if (view === 'list')   { state.searchQuery = ''; state.filterFav = false; state.filterGenre = null; }
+  if (view === 'face')     { state.faceEditMode = false; state.faceSalonMode = false; }
+  if (view === 'form')     { state.editId = id || null; state.formImages = []; }
+  if (view === 'list')     { state.searchQuery = ''; state.filterFav = false; state.filterGenre = null; }
+  if (view === 'settings') { /* no extra state */ }
   renderApp();
   const main = document.getElementById('app-main');
   if (main) main.scrollTop = 0;
@@ -371,6 +378,7 @@ function goBack() {
   else if (state.view === 'beauty') navigate('detail', state.beautyId);
   else if (state.view === 'face' && state.faceSalonMode) { state.faceSalonMode = false; renderApp(); return; }
   else if (state.view === 'face') navigate('list');
+  else if (state.view === 'settings') navigate('list');
   else if (state.view === 'detail') navigate('list');
   else if (state.view === 'form')   navigate('list');
   else navigate('list');
@@ -407,9 +415,12 @@ async function renderApp() {
     return;
   }
 
-  const isList = state.view === 'list';
-  const isForm = state.view === 'form';
-  const isDetail = state.view === 'detail';
+  const isList     = state.view === 'list';
+  const isForm     = state.view === 'form';
+  const isDetail   = state.view === 'detail';
+  const isSettings = state.view === 'settings';
+  const showNav    = isList || isSettings;
+  const showFab    = isList;
 
   let headerTitle = 'ヘアカタログ';
   let headerBack = false;
@@ -428,18 +439,21 @@ async function renderApp() {
       <button class="btn-icon" onclick="navigate('form','${state.detailId}')" aria-label="編集">${ICONS.edit}</button>
       <button class="btn-icon danger" onclick="confirmDelete('${state.detailId}')" aria-label="削除">${ICONS.trash}</button>`;
   }
+  if (isSettings) {
+    headerTitle = '設定';
+  }
 
   app.innerHTML = `
     ${buildHeader({ title: headerTitle, back: headerBack, actions: headerActions })}
-    <main class="app-main" id="app-main"></main>
-    ${isList ? buildBottomNav(state.filterFav ? 'fav' : 'list') : ''}
-    ${isForm ? '' : ''}
-    ${isDetail ? '' : ''}
+    <main class="app-main ${showNav ? '' : 'no-nav'}" id="app-main"></main>
+    ${showFab ? buildFab() : ''}
+    ${showNav ? buildBottomNav(isSettings ? 'settings' : (state.filterFav ? 'fav' : 'list')) : ''}
   `;
 
-  if (isList) await renderList();
-  else if (isForm) await renderForm();
-  else if (isDetail) await renderDetail();
+  if (isList)     await renderList();
+  else if (isForm)     await renderForm();
+  else if (isDetail)   await renderDetail();
+  else if (isSettings) renderSettings();
 }
 
 // ============================================================
@@ -1594,6 +1608,95 @@ async function doDelete(id) {
 function closeModal() {
   document.getElementById('modal-overlay').classList.add('hidden');
   document.body.classList.remove('no-scroll');
+}
+
+// ============================================================
+// VIEW: SETTINGS
+// ============================================================
+function renderSettings() {
+  setMain(`
+    <div class="settings-view">
+      <div class="settings-section">
+        <div class="settings-section-title">アプリ情報</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <span class="settings-label">アプリ名</span>
+            <span class="settings-value">ヘアカタログ</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">バージョン</span>
+            <span class="settings-value">Ver.1.0.0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">使い方</div>
+        <div class="settings-card">
+          <ul class="settings-list">
+            <li><strong>ホーム</strong>：登録したヘアスタイル画像を一覧表示</li>
+            <li><strong>お気に入り</strong>：♡を押した画像だけを表示</li>
+            <li><strong>似合う相談</strong>：自分の顔写真を使って似合う髪型をAIに相談</li>
+            <li><strong>＋ボタン</strong>：新しいヘアスタイル画像を追加</li>
+            <li><strong>美容師さんに見せる</strong>：画像とカット説明書を美容師さんに見せる</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">更新履歴</div>
+        <div class="settings-card">
+          <ul class="settings-list changelog">
+            <li>美容師さんに見せるカット説明書機能を追加</li>
+            <li>似合う髪型相談機能を追加</li>
+            <li>ホームとお気に入りの表示条件を修正</li>
+            <li>下部タブを4項目に整理</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">データ管理</div>
+        <div class="settings-card">
+          <p class="settings-danger-note">登録した全ヘアスタイル・お気に入り・顔写真データを削除します。この操作は取り消せません。</p>
+          <button class="btn-danger settings-danger-btn" onclick="confirmDeleteAll()">全データを削除</button>
+        </div>
+      </div>
+    </div>`);
+}
+
+function confirmDeleteAll() {
+  const overlay = document.getElementById('modal-overlay');
+  const box     = document.getElementById('modal-box');
+  box.innerHTML = `
+    <div class="modal-handle"></div>
+    <div class="modal-title">全データ削除</div>
+    <div class="modal-content">
+      <p style="font-size:15px;color:var(--text-secondary);text-align:center;line-height:1.6">
+        登録した全ヘアスタイル・カット説明書・顔写真データを削除します。<br>この操作は取り消せません。
+      </p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-danger" onclick="doDeleteAll()">すべて削除する</button>
+      <button class="btn-text" onclick="closeModal()">キャンセル</button>
+    </div>`;
+  overlay.classList.remove('hidden');
+  document.body.classList.add('no-scroll');
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+}
+
+async function doDeleteAll() {
+  closeModal();
+  try {
+    await DB.clear();
+    // Clear all beauty and face localStorage entries
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('beauty_') || k === 'face_consult');
+    keys.forEach(k => localStorage.removeItem(k));
+    showToast('全データを削除しました');
+    navigate('list');
+  } catch(e) {
+    showToast('削除中にエラーが発生しました', 'error');
+  }
 }
 
 // ============================================================
