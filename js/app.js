@@ -359,7 +359,7 @@ function navigate(view, id) {
   if (view === 'beauty') { state.beautyId = id; state.beautyEditMode = false; state.beautyImgIdx = 0; state.beautySalonMode = false; }
   if (view === 'face') { state.faceEditMode = false; state.faceSalonMode = false; }
   if (view === 'form')   { state.editId = id || null; state.formImages = []; }
-  if (view === 'list')   { state.searchQuery = ''; }
+  if (view === 'list')   { state.searchQuery = ''; state.filterFav = false; state.filterGenre = null; }
   renderApp();
   const main = document.getElementById('app-main');
   if (main) main.scrollTop = 0;
@@ -377,9 +377,11 @@ function goBack() {
 }
 
 function toggleFavFilter() {
-  state.filterFav = !state.filterFav;
+  state.filterFav = true;
   state.filterGenre = null;
-  navigate('list');
+  state.searchQuery = '';
+  state.view = 'list';
+  renderApp();
 }
 
 // ============================================================
@@ -430,7 +432,7 @@ async function renderApp() {
   app.innerHTML = `
     ${buildHeader({ title: headerTitle, back: headerBack, actions: headerActions })}
     <main class="app-main" id="app-main"></main>
-    ${isList ? buildBottomNav('list') : ''}
+    ${isList ? buildBottomNav(state.filterFav ? 'fav' : 'list') : ''}
     ${isForm ? '' : ''}
     ${isDetail ? '' : ''}
   `;
