@@ -752,11 +752,6 @@ async function renderDetail() {
           <div class="detail-section-title">AIでヘアスタイル説明を作成</div>
           <div class="ai-prompt-body">
             <p class="ai-prompt-desc">この画像をChatGPT・Claude・Geminiなどに添付し、下の文章をコピーして送ると、美容師さん向けのカット説明文を作成しやすくなります。</p>
-            <div class="ai-links">
-              <a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">ChatGPTで相談</a>
-              <a href="https://claude.ai/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">Claudeで相談</a>
-              <a href="https://gemini.google.com/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">Geminiで相談</a>
-            </div>
             <div class="ai-prompt-box">
               <div class="ai-prompt-text">${escHtml(AI_PROMPT)}</div>
             </div>
@@ -770,6 +765,14 @@ async function renderDetail() {
                 <li>コピーした文章を貼り付けて送信する</li>
                 <li>生成された説明文を美容師さんに見せる</li>
               </ol>
+            </div>
+            <div class="ai-links-group">
+              <div class="ai-links-label">STEP 2　AIを開く</div>
+              <div class="ai-links">
+                <a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">ChatGPTで相談</a>
+                <a href="https://claude.ai/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">Claudeで相談</a>
+                <a href="https://gemini.google.com/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">Geminiで相談</a>
+              </div>
             </div>
             <p class="ai-disclaimer-note">AIの回答は参考用です。実際の髪質・毛量・骨格・クセ・現在の髪の長さによって仕上がりは変わるため、最終的には美容師さんと相談してください。</p>
           </div>
