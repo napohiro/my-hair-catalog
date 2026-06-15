@@ -104,6 +104,7 @@ const state = {
   beautyId: null,
   beautyEditMode: false,
   beautyImgIdx: 0,
+  beautySalonMode: false,
   filterGenre: null,
   filterFav: false,
   searchQuery: '',
@@ -282,7 +283,7 @@ function navigate(view, id) {
   state.view = view;
   if (view === 'detail') state.detailId = id;
   if (view === 'salon')  { state.salonId = id; state.salonAngle = null; state.salonImgIdx = 0; }
-  if (view === 'beauty') { state.beautyId = id; state.beautyEditMode = false; state.beautyImgIdx = 0; }
+  if (view === 'beauty') { state.beautyId = id; state.beautyEditMode = false; state.beautyImgIdx = 0; state.beautySalonMode = false; }
   if (view === 'form')   { state.editId = id || null; state.formImages = []; }
   if (view === 'list')   { state.searchQuery = ''; }
   renderApp();
@@ -292,6 +293,7 @@ function navigate(view, id) {
 
 function goBack() {
   if (state.view === 'salon')  navigate('detail', state.salonId);
+  else if (state.view === 'beauty' && state.beautySalonMode) { state.beautySalonMode = false; renderApp(); return; }
   else if (state.view === 'beauty') navigate('detail', state.beautyId);
   else if (state.view === 'detail') navigate('list');
   else if (state.view === 'form')   navigate('list');
@@ -1005,8 +1007,9 @@ async function renderBeauty(app) {
 
   const bd = getBeautyData(state.beautyId);
   const images = s.images || [];
-  const hasData = !!(bd.aiText || bd.userMemo);
+  const hasData = !!(bd.aiText);
   const isEdit = state.beautyEditMode;
+  const isSalon = state.beautySalonMode;
   const idx = Math.min(state.beautyImgIdx, Math.max(0, images.length - 1));
 
   const imgHtml = images.length > 0 ? `
@@ -1019,55 +1022,78 @@ async function renderBeauty(app) {
     </div>` : `
     <div class="beauty-img-area beauty-img-empty">${ICONS.image}</div>`;
 
-  let bodyHtml;
-  if (hasData && !isEdit) {
-    bodyHtml = `
-      <div class="beauty-body">
-        ${bd.aiText ? `
-          <div class="beauty-saved-card">
-            <div class="beauty-saved-card-label">カット説明文</div>
-            <div class="beauty-saved-text">${escHtml(bd.aiText)}</div>
-          </div>` : ''}
-        ${bd.userMemo ? `
-          <div class="beauty-saved-card memo">
-            <div class="beauty-saved-card-label">メモ</div>
-            <div class="beauty-saved-text">${escHtml(bd.userMemo)}</div>
-          </div>` : ''}
-        ${bd.updatedAt ? `<p class="beauty-updated-date">更新日: ${formatDate(bd.updatedAt)}</p>` : ''}
-        <div class="beauty-view-actions">
-          <button class="btn-secondary" onclick="enterBeautyEdit()">編集する</button>
-          <button class="btn-danger" onclick="confirmClearBeauty()">クリア</button>
-        </div>
-      </div>`;
-  } else {
-    bodyHtml = `
-      <div class="beauty-body">
-        <div class="beauty-instruction-card">
-          <p>画像＋説明文を見せると、美容師さんにイメージが伝わりやすくなります。</p>
-          <p style="margin-top:8px">この画像を長押ししてスマホの写真フォルダに保存し、下のプロンプトをコピーしてChatGPTやClaudeなどのAIに貼り付けて送信してください。AIが生成した説明文をこのページに貼り付けて保存すると、美容室で画像と説明文を一緒に見せることができます。</p>
-        </div>
-        <div class="beauty-prompt-card">
-          <div class="beauty-card-section-label">コピー用プロンプト</div>
-          <div class="beauty-prompt-display">${escHtml(BEAUTY_PROMPT)}</div>
-          <button class="btn-copy-prompt" id="btn-beauty-copy" onclick="copyAiPrompt('btn-beauty-copy', BEAUTY_PROMPT)">プロンプトをコピー</button>
-        </div>
-        <div class="beauty-input-card">
-          <div class="beauty-card-section-label">AI説明文を貼り付け</div>
-          <div class="beauty-card-hint">ChatGPTやClaudeなどで生成した説明文をここに貼り付けてください</div>
-          <textarea class="beauty-textarea" id="beauty-ai-text" placeholder="AIが生成した説明文をここに貼り付け...">${escHtml(bd.aiText || '')}</textarea>
-        </div>
-        <div class="beauty-input-card">
-          <div class="beauty-card-section-label">ユーザーメモ</div>
-          <div class="beauty-card-hint">美容師さんへの補足・追加事項（自分用メモ）</div>
-          <textarea class="beauty-textarea small" id="beauty-user-memo" placeholder="例：前回より少し短め、襟足は残したい、サイドは刈り上げすぎない...">${escHtml(bd.userMemo || '')}</textarea>
-        </div>
-        <div class="beauty-form-actions">
-          <button class="btn-primary" onclick="saveBeautyForm()">保存する</button>
-          ${isEdit ? `<button class="btn-text" onclick="cancelBeautyEdit()">キャンセル</button>` : ''}
-        </div>
-      </div>`;
+  function attachSwipe() {
+    const area = document.getElementById('beauty-img-area');
+    if (!area || images.length <= 1) return;
+    let sx = 0;
+    area.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; }, { passive: true });
+    area.addEventListener('touchend', (e) => {
+      const d = sx - e.changedTouches[0].clientX;
+      if (Math.abs(d) > 40) moveBeautyImg(d > 0 ? 1 : -1);
+    }, { passive: true });
   }
 
+  // ── 見せるモード（AI・編集ボタン非表示）──
+  if (isSalon) {
+    app.innerHTML = `
+      <header class="app-header">
+        <button class="btn-icon" onclick="goBack()" aria-label="戻る">${ICONS.back}</button>
+        <h1 class="header-title">${escHtml(s.title || '(タイトルなし)')}</h1>
+        <div style="width:40px"></div>
+      </header>
+      <main class="app-main no-nav" id="app-main">
+        <div class="beauty-view">
+          ${imgHtml}
+          <div class="beauty-salon-body">
+            ${bd.aiText ? `<div class="beauty-salon-text">${escHtml(bd.aiText)}</div>` : ''}
+            ${bd.userMemo ? `
+              <div class="beauty-salon-memo">
+                <div class="beauty-salon-memo-label">メモ</div>
+                <div>${escHtml(bd.userMemo)}</div>
+              </div>` : ''}
+          </div>
+        </div>
+      </main>`;
+    attachSwipe();
+    return;
+  }
+
+  // ── 保存済み確認モード ──
+  if (hasData && !isEdit) {
+    app.innerHTML = `
+      <header class="app-header">
+        <button class="btn-icon" onclick="goBack()" aria-label="戻る">${ICONS.back}</button>
+        <h1 class="header-title">美容師さんに見せる</h1>
+        <div style="width:40px"></div>
+      </header>
+      <main class="app-main no-nav" id="app-main">
+        <div class="beauty-view">
+          ${imgHtml}
+          <div class="beauty-style-name">${escHtml(s.title || '(タイトルなし)')}</div>
+          <div class="beauty-body">
+            <div class="beauty-saved-card">
+              <div class="beauty-saved-card-label">カット説明書</div>
+              <div class="beauty-saved-text">${escHtml(bd.aiText)}</div>
+            </div>
+            ${bd.userMemo ? `
+              <div class="beauty-saved-card memo">
+                <div class="beauty-saved-card-label">メモ</div>
+                <div class="beauty-saved-text">${escHtml(bd.userMemo)}</div>
+              </div>` : ''}
+            ${bd.updatedAt ? `<p class="beauty-updated-date">更新日: ${formatDate(bd.updatedAt)}</p>` : ''}
+            <button class="btn-gold" onclick="enterBeautySalon()">${ICONS.scissors} 美容師さんに見せるモード</button>
+            <div class="btn-row">
+              <button class="btn-secondary" onclick="enterBeautyEdit()">編集する</button>
+              <button class="btn-danger" onclick="confirmClearBeauty()">クリア</button>
+            </div>
+          </div>
+        </div>
+      </main>`;
+    attachSwipe();
+    return;
+  }
+
+  // ── 入力モード（新規 or 編集）──
   app.innerHTML = `
     <header class="app-header">
       <button class="btn-icon" onclick="goBack()" aria-label="戻る">${ICONS.back}</button>
@@ -1078,19 +1104,43 @@ async function renderBeauty(app) {
       <div class="beauty-view">
         ${imgHtml}
         <div class="beauty-style-name">${escHtml(s.title || '(タイトルなし)')}</div>
-        ${bodyHtml}
+        <div class="beauty-body">
+          <div class="beauty-main-input">
+            <div class="beauty-main-input-label">カット説明書</div>
+            <textarea class="beauty-textarea large" id="beauty-ai-text"
+              placeholder="ここにAI回答を貼り付け...">${escHtml(bd.aiText || '')}</textarea>
+          </div>
+          <div class="beauty-input-card">
+            <div class="beauty-card-section-label">メモ（任意）</div>
+            <textarea class="beauty-textarea small" id="beauty-user-memo"
+              placeholder="例：前回より少し短め、襟足は残したい...">${escHtml(bd.userMemo || '')}</textarea>
+          </div>
+          <div class="beauty-form-actions">
+            <button class="btn-primary" onclick="saveBeautyForm()">説明書を保存</button>
+            ${isEdit ? `<button class="btn-text" onclick="cancelBeautyEdit()">キャンセル</button>` : ''}
+          </div>
+          <details class="ai-accordion">
+            <summary class="ai-accordion-summary">AIで説明書を作る</summary>
+            <div class="ai-accordion-body">
+              <p class="ai-accordion-desc">ChatGPT・Claude・Geminiに画像とプロンプトを送ると説明書が生成されます。コピーして上の欄に貼り付けてください。</p>
+              <div class="ai-prompt-box">
+                <div class="ai-prompt-text">${escHtml(BEAUTY_PROMPT)}</div>
+              </div>
+              <button class="btn-copy-prompt" id="btn-beauty-copy" onclick="copyAiPrompt('btn-beauty-copy', BEAUTY_PROMPT)">プロンプトをコピー</button>
+              <div class="ai-links-group">
+                <div class="ai-links-label">STEP 2　AIを開く</div>
+                <div class="ai-links">
+                  <a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">ChatGPT</a>
+                  <a href="https://claude.ai/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">Claude</a>
+                  <a href="https://gemini.google.com/" target="_blank" rel="noopener noreferrer" class="btn-ai-link">Gemini</a>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
     </main>`;
-
-  const imgArea = document.getElementById('beauty-img-area');
-  if (imgArea && images.length > 1) {
-    let startX = 0;
-    imgArea.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
-    imgArea.addEventListener('touchend', (e) => {
-      const diff = startX - e.changedTouches[0].clientX;
-      if (Math.abs(diff) > 40) moveBeautyImg(diff > 0 ? 1 : -1);
-    }, { passive: true });
-  }
+  attachSwipe();
 }
 
 async function moveBeautyImg(dir) {
@@ -1099,6 +1149,11 @@ async function moveBeautyImg(dir) {
   const images = s.images || [];
   state.beautyImgIdx = Math.max(0, Math.min(images.length - 1, state.beautyImgIdx + dir));
   await renderApp();
+}
+
+function enterBeautySalon() {
+  state.beautySalonMode = true;
+  renderApp();
 }
 
 function saveBeautyForm() {
